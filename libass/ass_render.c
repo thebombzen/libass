@@ -52,7 +52,7 @@ ASS_Renderer *ass_renderer_init(ASS_Library *library)
     error = FT_Init_FreeType(&ft);
     if (error) {
         ass_msg(library, MSGL_FATAL, "%s failed", "FT_Init_FreeType");
-        goto ass_init_exit;
+        goto fail;
     }
 
     FT_Library_Version(ft, &vmajor, &vminor, &vpatch);
@@ -62,7 +62,7 @@ ASS_Renderer *ass_renderer_init(ASS_Library *library)
     priv = calloc(1, sizeof(ASS_Renderer));
     if (!priv) {
         FT_Done_FreeType(ft);
-        goto ass_init_exit;
+        goto fail;
     }
 
     priv->library = library;
@@ -81,10 +81,8 @@ ASS_Renderer *ass_renderer_init(ASS_Library *library)
 #endif
 
     if (!rasterizer_init(&priv->rasterizer, priv->engine->tile_order,
-                         RASTERIZER_PRECISION)) {
-        FT_Done_FreeType(ft);
-        goto ass_init_exit;
-    }
+                         RASTERIZER_PRECISION))
+        goto fail;
 
     priv->cache.font_cache = ass_font_cache_create();
     priv->cache.bitmap_cache = ass_bitmap_cache_create();
@@ -113,7 +111,13 @@ ASS_Renderer *ass_renderer_init(ASS_Library *library)
     priv->settings.shaper = ASS_SHAPING_SIMPLE;
 #endif
 
-  ass_init_exit:
+    if (!priv->cache.font_cache || !priv->cache.bitmap_cache || !priv->cache.composite_cache || !priv->cache.outline_cache ||
+        !priv->text_info.combined_bitmaps || priv->text_info.glyphs || !priv->text_info.lines || !priv->shaper) {
+fail:
+        ass_renderer_done(priv);
+        priv = NULL;
+    }
+
     if (priv)
         ass_msg(library, MSGL_V, "Initialized");
     else
