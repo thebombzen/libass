@@ -62,18 +62,21 @@ static void destroy_font(void *priv)
 
 static bool check_postscript(void *priv)
 {
+    bool ret = false;
     CTFontDescriptorRef fontd = priv;
     CFNumberRef cfformat =
         CTFontDescriptorCopyAttribute(fontd, kCTFontFormatAttribute);
     int format;
 
     if (!CFNumberGetValue(cfformat, kCFNumberIntType, &format))
-        return false;
+        goto fail;
 
+    ret = format == kCTFontFormatOpenTypePostScript ||
+          format == kCTFontFormatPostScript;
+
+fail:
     SAFE_CFRelease(cfformat);
-
-    return format == kCTFontFormatOpenTypePostScript ||
-           format == kCTFontFormatPostScript;
+    return ret;
 }
 
 static bool check_glyph(void *priv, uint32_t code)
